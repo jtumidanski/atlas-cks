@@ -22,6 +22,7 @@ func NewServer(l *logrus.Logger, db *gorm.DB) *Server {
 
 	csr := router.PathPrefix("/characters").Subrouter()
 	csr.HandleFunc("/{characterId}/keymap", keymap.HandleGetKeyMap(l, db)).Methods(http.MethodGet)
+	csr.HandleFunc("/{characterId}/keymap/reset", keymap.HandleResetKeyMap(l, db)).Methods(http.MethodPost)
 
 	w := l.Writer()
 	defer w.Close()
