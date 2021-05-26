@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-func HandleGetKeyMap(fl *logrus.Logger, db *gorm.DB) http.HandlerFunc {
+func HandleGetKeyMap(fl logrus.FieldLogger, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l := fl.WithFields(logrus.Fields{"originator": "HandleGetKeyMap", "type": "rest_handler"})
 
@@ -48,7 +48,7 @@ func HandleGetKeyMap(fl *logrus.Logger, db *gorm.DB) http.HandlerFunc {
 	}
 }
 
-func HandleResetKeyMap(fl *logrus.Logger, db *gorm.DB) http.HandlerFunc {
+func HandleResetKeyMap(fl logrus.FieldLogger, db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l := fl.WithFields(logrus.Fields{"originator": "HandleResetKeyMap", "type": "rest_handler"})
 
