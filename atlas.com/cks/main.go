@@ -3,6 +3,7 @@ package main
 import (
 	"atlas-cks/database"
 	"atlas-cks/kafka/consumers"
+	"atlas-cks/keymap"
 	"atlas-cks/logger"
 	"atlas-cks/rest"
 	"context"
@@ -19,7 +20,7 @@ func main() {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 
-	db := database.ConnectToDatabase(l)
+	db := database.Connect(l, database.SetMigrations(keymap.Migration))
 
 	consumers.CreateEventConsumers(l, db, ctx, wg)
 
