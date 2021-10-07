@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"atlas-cks/keymap"
 	"context"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -10,18 +9,20 @@ import (
 	"sync"
 )
 
-func CreateRestService(l *logrus.Logger, db *gorm.DB, ctx context.Context, wg *sync.WaitGroup) {
-	go NewServer(l, ctx, wg, ProduceRoutes(db))
+type RouteInitializer func(*mux.Router, logrus.FieldLogger, *gorm.DB)
+
+func CreateService(l *logrus.Logger, db *gorm.DB, ctx context.Context, wg *sync.WaitGroup, basePath string, initializers ...RouteInitializer) {
+	go NewServer(l, ctx, wg, ProduceRoutes(db, basePath, initializers...))
 }
 
-func ProduceRoutes(db *gorm.DB) func(l logrus.FieldLogger) http.Handler {
+func ProduceRoutes(db *gorm.DB, basePath string, initializers ...RouteInitializer) func(l logrus.FieldLogger) http.Handler {
 	return func(l logrus.FieldLogger) http.Handler {
-		router := mux.NewRouter().PathPrefix("/ms/cks").Subrouter().StrictSlash(true)
+		router := mux.NewRouter().PathPrefix(basePath).Subrouter().StrictSlash(true)
 		router.Use(CommonHeader)
 
-		csr := router.PathPrefix("/characters").Subrouter()
-		csr.HandleFunc("/{characterId}/keymap", keymap.HandleGetKeyMap(l, db)).Methods(http.MethodGet)
-		csr.HandleFunc("/{characterId}/keymap/reset", keymap.HandleResetKeyMap(l, db)).Methods(http.MethodPost)
+		for _, initializer := range initializers {
+			initializer(router, l, db)
+		}
 
 		return router
 	}

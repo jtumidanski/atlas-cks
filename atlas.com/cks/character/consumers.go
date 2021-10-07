@@ -3,6 +3,7 @@ package character
 import (
 	"atlas-cks/kafka/handler"
 	"atlas-cks/keymap"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -20,7 +21,7 @@ func CreatedEventCreator() handler.EmptyEventCreator {
 }
 
 func HandleCreatedEvent(db *gorm.DB) handler.EventHandler {
-	return func(l logrus.FieldLogger, e interface{}) {
+	return func(l logrus.FieldLogger, span opentracing.Span, e interface{}) {
 		if event, ok := e.(*createdEvent); ok {
 			err := keymap.CreateDefault(l, db)(event.CharacterId)
 			if err != nil {
