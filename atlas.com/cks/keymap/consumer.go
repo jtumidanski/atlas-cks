@@ -2,6 +2,7 @@ package keymap
 
 import (
 	"atlas-cks/kafka/handler"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -24,7 +25,7 @@ func CommandCreator() handler.EmptyEventCreator {
 }
 
 func HandleChangeCommand(db *gorm.DB) handler.EventHandler {
-	return func(l logrus.FieldLogger, e interface{}) {
+	return func(l logrus.FieldLogger, span opentracing.Span, e interface{}) {
 		if event, ok := e.(*changeCommand); ok {
 			err := ChangeKeyMap(l, db)(event.CharacterId, event.Changes)
 			if err != nil {
