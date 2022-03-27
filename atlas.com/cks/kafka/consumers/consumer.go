@@ -1,11 +1,9 @@
 package consumers
 
 import (
-	"atlas-cks/kafka/handler"
 	"atlas-cks/retry"
 	"atlas-cks/topic"
 	"context"
-	"encoding/json"
 	"github.com/opentracing/opentracing-go"
 	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
@@ -15,31 +13,47 @@ import (
 	"time"
 )
 
-type config struct {
-	maxWait time.Duration
+func Create(l *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, configs ...Config) {
+	for _, c := range configs {
+		go create(l, ctx, wg, c)
+	}
 }
 
-type ConfigOption func(c *config)
-
-func NewConsumer(cl *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, name string, topicToken string, groupId string, ec handler.EmptyEventCreator, h handler.EventHandler, modifications ...ConfigOption) {
-	c := &config{maxWait: 500 * time.Millisecond}
-
-	for _, modification := range modifications {
-		modification(c)
+func NewConfiguration(name string, topicToken string, groupId string, handler MessageHandler) Config {
+	return Config{
+		name:       name,
+		topicToken: topicToken,
+		groupId:    groupId,
+		maxWait:    500,
+		handler:    handler,
 	}
+}
 
+type Config struct {
+	name       string
+	topicToken string
+	groupId    string
+	maxWait    time.Duration
+	handler    MessageHandler
+}
+
+type MessageHandler func(l logrus.FieldLogger, span opentracing.Span, msg kafka.Message)
+
+func create(cl *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, c Config) {
 	initSpan := opentracing.StartSpan("consumer_init")
-	t := topic.GetRegistry().Get(cl, initSpan, topicToken)
+	t := topic.GetRegistry().Get(cl, initSpan, c.topicToken)
 	initSpan.Finish()
 
 	l := cl.WithFields(logrus.Fields{"originator": t, "type": "kafka_consumer"})
 
 	l.Infof("Creating topic consumer.")
 
+	wg.Add(1)
+
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{os.Getenv("BOOTSTRAP_SERVERS")},
 		Topic:   t,
-		GroupID: groupId,
+		GroupID: c.groupId,
 		MaxWait: c.maxWait,
 	})
 
@@ -68,24 +82,18 @@ func NewConsumer(cl *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, nam
 				l.WithError(err).Errorf("Could not successfully read message.")
 			} else {
 				l.Infof("Message received %s.", string(msg.Value))
-				event := ec()
-				err = json.Unmarshal(msg.Value, &event)
-				if err != nil {
-					l.WithError(err).Errorf("Could not unmarshal event into %s.", msg.Value)
-				} else {
-					go func() {
-						headers := make(map[string]string)
-						for _, header := range msg.Headers {
-							headers[header.Key] = string(header.Value)
-						}
+				go func() {
+					headers := make(map[string]string)
+					for _, header := range msg.Headers {
+						headers[header.Key] = string(header.Value)
+					}
 
-						spanContext, _ := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(headers))
-						span := opentracing.StartSpan(name, opentracing.FollowsFrom(spanContext))
-						defer span.Finish()
+					spanContext, _ := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(headers))
+					span := opentracing.StartSpan(c.name, opentracing.FollowsFrom(spanContext))
+					defer span.Finish()
 
-						h(l, span, event)
-					}()
-				}
+					c.handler(l, span, msg)
+				}()
 			}
 		}
 	}()

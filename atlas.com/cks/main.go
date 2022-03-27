@@ -1,6 +1,7 @@
 package main
 
 import (
+	"atlas-cks/character"
 	"atlas-cks/database"
 	"atlas-cks/kafka/consumers"
 	"atlas-cks/keymap"
@@ -16,6 +17,7 @@ import (
 )
 
 const serviceName = "atlas-cks"
+const consumerGroupId = "Character Keyboard Settings Service"
 
 func main() {
 	l := logger.CreateLogger(serviceName)
@@ -37,7 +39,9 @@ func main() {
 
 	db := database.Connect(l, database.SetMigrations(keymap.Migration))
 
-	consumers.CreateEventConsumers(l, db, ctx, wg)
+	consumers.Create(l, ctx, wg,
+		character.NewConsumer(db)(consumerGroupId),
+		keymap.NewConsumer(db)(consumerGroupId))
 
 	rest.CreateService(l, db, ctx, wg, "/ms/cks", keymap.InitResource)
 
