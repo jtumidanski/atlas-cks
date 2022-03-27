@@ -2,7 +2,6 @@ package character
 
 import (
 	"atlas-cks/kafka"
-	"atlas-cks/kafka/consumers"
 	"atlas-cks/keymap"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
@@ -20,9 +19,9 @@ type createdEvent struct {
 	Name        string `json:"name"`
 }
 
-func NewConsumer(db *gorm.DB) func(groupId string) consumers.Config {
-	return func(groupId string) consumers.Config {
-		return consumers.NewConfiguration(consumerName, topicToken, groupId, kafka.Adapt(HandleCreatedEvent(db)))
+func NewConsumer(db *gorm.DB) func(groupId string) kafka.ConsumerConfig {
+	return func(groupId string) kafka.ConsumerConfig {
+		return kafka.NewConsumerConfig[createdEvent](consumerName, topicToken, groupId, HandleCreatedEvent(db))
 	}
 }
 

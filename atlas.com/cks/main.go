@@ -3,7 +3,7 @@ package main
 import (
 	"atlas-cks/character"
 	"atlas-cks/database"
-	"atlas-cks/kafka/consumers"
+	"atlas-cks/kafka"
 	"atlas-cks/keymap"
 	"atlas-cks/logger"
 	"atlas-cks/rest"
@@ -39,7 +39,7 @@ func main() {
 
 	db := database.Connect(l, database.SetMigrations(keymap.Migration))
 
-	consumers.Create(l, ctx, wg,
+	kafka.CreateConsumers(l, ctx, wg,
 		character.NewConsumer(db)(consumerGroupId),
 		keymap.NewConsumer(db)(consumerGroupId))
 

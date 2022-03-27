@@ -2,7 +2,6 @@ package keymap
 
 import (
 	"atlas-cks/kafka"
-	"atlas-cks/kafka/consumers"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -24,9 +23,9 @@ type Change struct {
 	Action     int32 `json:"action"`
 }
 
-func NewConsumer(db *gorm.DB) func(groupId string) consumers.Config {
-	return func(groupId string) consumers.Config {
-		return consumers.NewConfiguration(consumerName, topicToken, groupId, kafka.Adapt(HandleChangeCommand(db)))
+func NewConsumer(db *gorm.DB) func(groupId string) kafka.ConsumerConfig {
+	return func(groupId string) kafka.ConsumerConfig {
+		return kafka.NewConsumerConfig[changeCommand](consumerName, topicToken, groupId, HandleChangeCommand(db))
 	}
 }
 

@@ -1,9 +1,10 @@
-package consumers
+package kafka
 
 import (
 	"atlas-cks/retry"
 	"atlas-cks/topic"
 	"context"
+	"encoding/json"
 	"github.com/opentracing/opentracing-go"
 	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
@@ -13,33 +14,47 @@ import (
 	"time"
 )
 
-func Create(l *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, configs ...Config) {
+func CreateConsumers(l *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, configs ...ConsumerConfig) {
 	for _, c := range configs {
-		go create(l, ctx, wg, c)
+		go createConsumer(l, ctx, wg, c)
 	}
 }
 
-func NewConfiguration(name string, topicToken string, groupId string, handler MessageHandler) Config {
-	return Config{
+func NewConsumerConfig[E any](name string, topicToken string, groupId string, handler HandlerFunc[E]) ConsumerConfig {
+	return ConsumerConfig{
 		name:       name,
 		topicToken: topicToken,
 		groupId:    groupId,
 		maxWait:    500,
-		handler:    handler,
+		handler:    adapt(handler),
 	}
 }
 
-type Config struct {
+type ConsumerConfig struct {
 	name       string
 	topicToken string
 	groupId    string
 	maxWait    time.Duration
-	handler    MessageHandler
+	handler    messageHandler
 }
 
-type MessageHandler func(l logrus.FieldLogger, span opentracing.Span, msg kafka.Message)
+type messageHandler func(l logrus.FieldLogger, span opentracing.Span, msg kafka.Message)
 
-func create(cl *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, c Config) {
+type HandlerFunc[E any] func(logrus.FieldLogger, opentracing.Span, E)
+
+func adapt[E any](eh HandlerFunc[E]) messageHandler {
+	return func(l logrus.FieldLogger, span opentracing.Span, msg kafka.Message) {
+		var event E
+		err := json.Unmarshal(msg.Value, &event)
+		if err != nil {
+			l.WithError(err).Errorf("Could not unmarshal event into %s.", msg.Value)
+		} else {
+			eh(l, span, event)
+		}
+	}
+}
+
+func createConsumer(cl *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, c ConsumerConfig) {
 	initSpan := opentracing.StartSpan("consumer_init")
 	t := topic.GetRegistry().Get(cl, initSpan, c.topicToken)
 	initSpan.Finish()
