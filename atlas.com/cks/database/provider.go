@@ -7,7 +7,7 @@ import (
 
 type EntityProvider[E any] func(db *gorm.DB) model.Provider[E]
 
-type EntityListProvider[E any] func(db *gorm.DB) model.SliceProvider[E]
+type EntitySliceProvider[E any] func(db *gorm.DB) model.SliceProvider[E]
 
 func ModelProvider[M any, E any](db *gorm.DB) func(ep EntityProvider[E], t model.Transformer[E, M]) model.Provider[M] {
 	return func(ep EntityProvider[E], t model.Transformer[E, M]) model.Provider[M] {
@@ -15,13 +15,13 @@ func ModelProvider[M any, E any](db *gorm.DB) func(ep EntityProvider[E], t model
 	}
 }
 
-func ModelListProvider[M any, E any](db *gorm.DB) func(ep EntityListProvider[E], t model.Transformer[E, M]) model.SliceProvider[M] {
-	return func(ep EntityListProvider[E], t model.Transformer[E, M]) model.SliceProvider[M] {
+func ModelSliceProvider[M any, E any](db *gorm.DB) func(ep EntitySliceProvider[E], t model.Transformer[E, M]) model.SliceProvider[M] {
+	return func(ep EntitySliceProvider[E], t model.Transformer[E, M]) model.SliceProvider[M] {
 		return model.SliceMap(ep(db), t)
 	}
 }
 
-func ListGet[E any](db *gorm.DB, query interface{}) model.SliceProvider[E] {
+func SliceQuery[E any](db *gorm.DB, query interface{}) model.SliceProvider[E] {
 	var results []E
 	err := db.Where(query).Find(&results).Error
 	if err != nil {

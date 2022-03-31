@@ -13,7 +13,7 @@ var defaultAction = []int32{0, 106, 10, 1, 12, 13, 18, 24, 8, 5, 4, 19, 14, 15, 
 
 func ByCharacterModelProvider(db *gorm.DB) func(characterId uint32) model.SliceProvider[Model] {
 	return func(characterId uint32) model.SliceProvider[Model] {
-		return database.ModelListProvider[Model, entity](db)(entityByCharacterId(characterId), makeKeyMap)
+		return database.ModelSliceProvider[Model, entity](db)(entityByCharacterId(characterId), makeKeyMap)
 	}
 }
 

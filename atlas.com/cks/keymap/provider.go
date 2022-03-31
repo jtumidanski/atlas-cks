@@ -6,8 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func entityByCharacterId(id uint32) database.EntityListProvider[entity] {
+func entityByCharacterId(id uint32) database.EntitySliceProvider[entity] {
 	return func(db *gorm.DB) model.SliceProvider[entity] {
-		return database.ListGet[entity](db, &entity{CharacterId: id})
+		return database.SliceQuery[entity](db, &entity{CharacterId: id})
 	}
 }
